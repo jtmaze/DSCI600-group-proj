@@ -8,7 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-library(dyplr)
+library(dplyr)
 set.seed(42) # If you know, you know ! :)
 
 ```
@@ -18,7 +18,7 @@ set.seed(42) # If you know, you know ! :)
 
 ```{r}
 
-earth_bio_salary_params <- list(
+params <- list(
   mu = 90000,
   alpha = c('n' = -8000,
             'y' = +15000
@@ -38,6 +38,7 @@ earth_bio_hindex_params <- list( # Doing this later
 
 ```{r}
 sample_size <- 1000
+gamma_size <- 1000
 
 earth_bio_grads <- expand.grid(
   post_doc = rep(NA, sample_size), 
@@ -46,13 +47,38 @@ earth_bio_grads <- expand.grid(
   h_index = NA
 )
 
-for (r in 1:nrow(earth_bio_grads)) {
+grads <- nrow(earth_bio_grads)
+
+for (r in 1:5) {
   # randomly assign post-doc or not with proportion (0.3 post-doc, 0.7 not)
   earth_bio_grads$post_doc[r] <- sample(c('y', 'n'), size=1, prob=c(0.3, 0.7))
   # randomly assign location with proportion (0.4 international, 0.6 U.S.)
   earth_bio_grads$location[r] <- sample(c('us', 'int'), size=1, prob=c(0.4, 0.6))
   
-  # Assign params based on pumpkin example
+  # Assign params 
+  pd <- as.character(earth_bio_grads$post_doc[r])
+  loc <- as.character(earth_bio_grads$location[r])
+  full_mu = params$mu
+  alpha = params$alpha[pd]
+  beta = params$beta[loc]
+  
+  sample_mu <- full_mu + alpha + beta
+  print(sample_mu)
+  
+  sample_shape <- 5
+  sample_rate <- (sample_shape / sample_mu)
+  
+  gamma_dist <- rgamma(gamma_size, shape = sample_shape, rate = sample_rate)
+  
+  hist(gamma_dist, breaks = 50, main = "Gamma Distribution",
+     xlab = "Value", probability = TRUE, col = "lightgreen")
+  lines(density(gamma_dist), col = "blue", lwd = 2)
+  
+  salary <- sample(gamma_dist, size=1)
+  print(salary)
+  
+  earth_bio_grads$salary[r] <- salary
+  
 }
 
 ```
