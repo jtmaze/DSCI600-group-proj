@@ -9,28 +9,23 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
+library(scales)
 set.seed(42) # If you know, you know ! :)
 
 ```
 
 ## R Earth Sciences & Biology Distribution
 
-
 ```{r}
 
 params <- list(
-  mu = 90000,
+  mu = 95000,
   alpha = c('n' = -8000,
-            'y' = +15000
+            'y' = +17000
   ),
   beta = c('us' = 0,
            'int' = +1000
   )
-)
-  
-
-earth_bio_hindex_params <- list(
-  mu = 9# Doing this later
 )
 
 ```
@@ -42,6 +37,7 @@ gamma_size <- 1000
 earth_bio_grads <- data.frame(
   post_doc = rep(NA, sample_size), 
   location = rep(NA, sample_size),
+  field = 'Earth Science & Biology',
   salary = NA,
   h_index = NA
 )
@@ -69,12 +65,11 @@ for (r in 1:grads) {
   
   gamma_dist <- rgamma(gamma_size, shape = sample_shape, rate = sample_rate)
   
-  if (r %in% c(5, 67, 99, 300, 670, 900)) {
-    hist(gamma_dist, breaks = 50, main = paste("Gamma Distribution (Iteration: with", pd, " and", loc,")"),
-         xlab = "Value", probability = TRUE, col = "lightgreen")
-    lines(density(gamma_dist), col = "blue", lwd = 2)
-  }
-  
+  # if (r %in% c(5, 67, 99, 300, 670, 900)) {
+  #   hist(gamma_dist, breaks = 50, main = paste("Gamma Distribution (Iteration: with", pd, " and", loc,")"),
+  #        xlab = "Value", probability = TRUE, col = "lightgreen")
+  #   lines(density(gamma_dist), col = "blue", lwd = 2)
+  # }
   
   salary <- sample(gamma_dist, size=1)
   print(salary)
@@ -87,42 +82,51 @@ for (r in 1:grads) {
 
 ```{r}
 
-h_index_corr <- 0.77
-
+rho <- 0.75
+sd <- rho / 2
+print(sd)
 
 earth_bio_grads <- earth_bio_grads %>% 
-  mutate(h_index = ((salary * h_index_corr) + sqrt(1 - h_index_corr * rnorm(n=grads, )
+  mutate(h_index = salary * (1 + rnorm(1000, 0, sd))) %>% 
+  mutate(h_index = case_when(h_index < 0 ~ 0,
+                             h_index >= 0 ~ h_index)) %>% 
+  mutate(h_index = h_index / 11000) %>% 
+  mutate(discipline = 'Earth Sciences & Biology')
 
+print(cor(earth_bio_grads$h_index, earth_bio_grads$salary))
+
+options(scipen = 999 )
+
+plot <- ggplot(data = earth_bio_grads, 
+               mapping = aes(x=h_index, 
+                             y=salary, 
+                             color=post_doc)) +
+  geom_point() +
+  scale_x_continuous(labels = label_number()) +
+  theme_bw() +
+  labs(title="Correlation between h-index and income")
+
+print(plot)
+```
+## Math and Statistics
+
+```{r}
+
+params <- list(
+  mu = 95000,
+  alpha = c('n' = -8000,
+            'y' = +17000
+  ),
+  beta = c('us' = 0,
+           'int' = +1000
+  )
+)
 
 ```
 
 ```{r}
 
-plot <- ggplot(earth_bio_grads, 
-               mapping=aes(x = salary)) +
-  geom_histogram(binwidth = 10000, fill = "lightblue", color = "black", alpha = 0.7) +
-  labs(title = "Salary Distribution",
-       x = "Salary",
-       y = "Frequency") +
-  theme_minimal() +
-  facet_wrap(~location)
-
 
 ```
-
-```{r}
-
-h_index_corr <- 0.77
-
-
-earth_bio_grads <- earth_bio_grads %>% 
-  mutate(h_index = 
-
-
-```
-
-
-
-
 
 
