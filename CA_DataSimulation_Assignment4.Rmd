@@ -159,7 +159,7 @@ hist(humanities_grads_H$h_index) #plot h-index values
 
 ```{r}
 data <- rbind(humanities_grads, humanities_grads_H)
-data$fiedl <- "humanities"
+data$field <- "humanities"
 
 
 hist(data$salary) #plot salary histogram
@@ -172,12 +172,100 @@ plot(
   pch = 21,
 )
 
+```
+# Physics/Chemistry 
+```{r}
+Phy_Chem_grads_salary_params <- list(
+  mu = 120000, # mean yearly income (low in humanities)
+  alpha = c('n' = -5000,
+            'y' = +20000
+  ),
+  beta = c('us' = 0,
+           'int' = +1000
+  ),
+  # Not adding any interaction terms (gamma)
+  sigma = 20000
+)
+```
 
+
+```{r}
+population_dist <- rnorm(100000, Phy_Chem_grads_salary_params$mu, Phy_Chem_grads_salary_params$sigma) #Currently using a normal distribution for simplicity. We can change later or use different distributions for other fields
+
+sample_size <- 1000
+
+Phy_Chem_grads <- expand.grid(
+  post_doc = rep(NA, sample_size), 
+  location = rep(NA),
+  salary = NA
+)
+
+for (r in 1:nrow(Phy_Chem_grads)) {
+  # randomly assign post-doc or not with proportion (0.3 post-doc, 0.7 not)
+  Phy_Chem_grads$post_doc[r] <- sample(c('y', 'n'), size=1, prob=c(0.3, 0.7))
+  # randomly assign location with proportion (0.4 international, 0.6 U.S.)
+  Phy_Chem_grads$location[r] <- sample(c('us', 'int'), size=1, prob=c(0.4, 0.6))
+  
+  # Assign params based on pumpkin example
+}
+```
+
+
+```{r}
+for (j in 1:nrow(Phy_Chem_grads)) {
+  pd <- as.character(Phy_Chem_grads$post_doc[j]) # temp. store post doc status
+  loc <- as.character(Phy_Chem_grads$location[j])      # temp. store location         
+  gamma <- 0                       #no interaction, so no combination factor needed
+  Phy_Chem_grads$salary[j] <- (
+    sample(population_dist, 1)                        #sample randomly from the population distribution
+    + Phy_Chem_grads_salary_params$alpha[pd]                # assign expected impact of other variables
+    + Phy_Chem_grads_salary_params$beta[loc]                
+    + gamma                          
+  )
+}
+```
+
+
+```{r}
+hist(Phy_Chem_grads$salary) #plot salary histogram
+
+#mutate salary, altering scaling variables and mean of index distibution until desired mean impact and desired correlation between impact and salary is reached. Here, I picked mean h-index ~ 11 (based on a google search) and correlation ~0.3 (because we wanted h-index to be only weakly important in this field)
+```
+
+
+```{r}
+Phy_Chem_grads <- Phy_Chem_grads |> 
+  dplyr::mutate(h_index = Phy_Chem_grads$salary * 0.00005 + rnorm(1000, 20, 5))
+mean_impact <- mean(Phy_Chem_grads$h_index)
+correlation <- cor(Phy_Chem_grads$salary, Phy_Chem_grads$h_index)
+```
+
+
+```{r}
+hist(Phy_Chem_grads$h_index) #plot h-index values
+```
+
+```{r}
+Phy_Chem_grads$field <- "Physics_Chemistry"
+data <- rbind(data, Phy_Chem_grads)
+
+hist(data$salary) #plot salary histogram
+hist(data$h_index) #plot h-index values
+
+plot(
+  x = data$salary,
+  y = data$h_index,
+  cex = 1,
+  pch = 21,
+)
 
 ```
+
+
+
 ### Old Code - Does work but is not nice
 ```{r}
-t.seed(12)
+sett.seed(12)
 salery <- rnorm(n = 200, mean = 150000, sd = 8000);
 hist(salery, xlab = "Random value (X)", col = "grey",
      main = "", cex.lab = 1.5, cex.axis = 1.5);
