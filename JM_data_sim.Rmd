@@ -14,13 +14,21 @@ set.seed(42) # If you know, you know ! :)
 
 ```
 
-## R Earth Sciences & Biology Distribution
+## R Earth Sciences & Biology Distribution (James)
+
+To generate this data, I used a gamma distribution. I made it so that different proportions of respondents conducted post-docs (30% yes, 70% no) and international (40% international, 60% U.S.) PhDs. To match simulated influence on salary, I adjusted the gamma distribution's mean based on the location parameter (U.S. or International) and the post-doc parameter. I calculated the rate parameter as rate = shape / mean, with the shape parameter constant for all Earth Science and Biology Grads (shape=5). For each graduate, I simulated a gamma distribution with 1000 salary observations given the appropriate parameters. Then, I randomly sampled each graduate's gamma distribution to simulate their salary. The h-index was drawn from a normal distribution, and the value was multiplied by salary. By adjusting the standard deviation of the distribution, we can strengthen or weaken the correlation with salary. 
+
+Here's the major findings on Earth Science and Bioloy PhDs:
+- Salary follows a gamma distribution with rightward skew
+- Conducting a post-doc substantially increases private-sector salary
+- International PhDs do not have a discernible impact on salary, given this sample size (power)
+- The h-index has a fairly strong correlation to graduate's salary, and h-indices are higher than Math & Stats gradautes. 
 
 ```{r}
 
 params <- list(
   mu = 95000,
-  alpha = c('n' = -8000,
+  alpha = c('n' = -9000,
             'y' = +17000
   ),
   beta = c('us' = 0,
@@ -31,7 +39,7 @@ params <- list(
 ```
 
 ```{r}
-sample_size <- 1000
+sample_size <- 890
 gamma_size <- 1000
 
 earth_bio_grads <- data.frame(
@@ -58,40 +66,35 @@ for (r in 1:grads) {
   beta = params$beta[loc]
   
   sample_mu <- full_mu + alpha + beta
-  print(sample_mu)
   
   sample_shape <- 5
   sample_rate <- (sample_shape / sample_mu)
   
   gamma_dist <- rgamma(gamma_size, shape = sample_shape, rate = sample_rate)
   
-  # if (r %in% c(5, 67, 99, 300, 670, 900)) {
-  #   hist(gamma_dist, breaks = 50, main = paste("Gamma Distribution (Iteration: with", pd, " and", loc,")"),
-  #        xlab = "Value", probability = TRUE, col = "lightgreen")
-  #   lines(density(gamma_dist), col = "blue", lwd = 2)
-  # }
+  if (r %in% c(5, 99, 900)) {
+    hist(gamma_dist, breaks = 50, main = paste("Gamma Distribution (Iteration: with", pd, " and", loc,")"),
+         xlab = "Value", probability = TRUE, col = "lightgreen")
+    lines(density(gamma_dist), col = "blue", lwd = 2)
+  }
   
   salary <- sample(gamma_dist, size=1)
-  print(salary)
   
   earth_bio_grads$salary[r] <- salary
-  
 }
 
 ```
 
 ```{r}
 
-rho <- 0.75
-sd <- rho / 2
-print(sd)
+variability_param <- 0.5 # Make it bigger to decrease h-index correlation
+sd <- variability_param / 2
 
 earth_bio_grads <- earth_bio_grads %>% 
-  mutate(h_index = salary * (1 + rnorm(1000, 0, sd))) %>% 
+  mutate(h_index = salary * (1 + rnorm(grads, 0, sd))) %>% 
   mutate(h_index = case_when(h_index < 0 ~ 0,
                              h_index >= 0 ~ h_index)) %>% 
-  mutate(h_index = h_index / 11000) %>% 
-  mutate(discipline = 'Earth Sciences & Biology')
+  mutate(h_index = h_index / 11000) 
 
 print(cor(earth_bio_grads$h_index, earth_bio_grads$salary))
 
@@ -108,25 +111,106 @@ plot <- ggplot(data = earth_bio_grads,
 
 print(plot)
 ```
-## Math and Statistics
+
+## Math and Statistics Grads (James)
+
+The Math and Statistics graduates were simulated with the same steps as Earth Sciences and Biology graduates; however, the parameters and thus, the overall findings are different. 
+
+- Overall, the mean salary is much higher for Math and Statistics PhDs, and the variance is much higher. (i.e. the gamma distribution has a smaller shape parameter (3.5 instead of 5). This means these graduates will have some extremely high earners. 
+- Conducting a post-doc will have a small, but likely un-observable impact on private sector salary. 
+- U.S. students Math and Statistics Students generally have higher salaries than international students.
+- h-index has a relatively weak correlation with 
+
+
 
 ```{r}
 
 params <- list(
-  mu = 95000,
-  alpha = c('n' = -8000,
-            'y' = +17000
+  mu = 152000,
+  alpha = c('n' = -1000,
+            'y' = +4000
   ),
-  beta = c('us' = 0,
-           'int' = +1000
+  beta = c('us' = +20000,
+           'int' = -2500
   )
 )
-
 ```
 
 ```{r}
 
+sample_size <- 525
+gamma_size <- 1000
+
+math_stats_grads <- data.frame(
+  post_doc = rep(NA, sample_size), 
+  location = rep(NA, sample_size),
+  field = 'Math & Statistics',
+  salary = NA,
+  h_index = NA
+)
+
+grads <- nrow(math_stats_grads)
+
+for (r in 1:grads) {
+  # randomly assign post-doc or not with proportion (0.3 post-doc, 0.7 not)
+  math_stats_grads$post_doc[r] <- sample(c('y', 'n'), size=1, prob=c(0.15, 0.85))
+  # randomly assign location with proportion (0.4 international, 0.6 U.S.)
+  math_stats_grads$location[r] <- sample(c('us', 'int'), size=1, prob=c(0.75, 0.25))
+  
+  # Assign params 
+  pd <- as.character(math_stats_grads$post_doc[r])
+  loc <- as.character(math_stats_grads$location[r])
+  full_mu = params$mu
+  alpha = params$alpha[pd]
+  beta = params$beta[loc]
+  
+  sample_mu <- full_mu + alpha + beta
+  
+  sample_shape <- 3.5
+  sample_rate <- (sample_shape / sample_mu)
+  
+  gamma_dist <- rgamma(gamma_size, shape = sample_shape, rate = sample_rate)
+  
+  if (r %in% c(5, 99, 500)) {
+    hist(gamma_dist, breaks = 50, main = paste("Gamma Distribution (Iteration: with", pd, " and", loc,")"),
+         xlab = "Value", probability = TRUE, col = "lightgreen")
+    lines(density(gamma_dist), col = "blue", lwd = 2)
+  }
+  
+  salary <- sample(gamma_dist, size=1)
+  
+  math_stats_grads$salary[r] <- salary
+}
+```
+
+```{r}
+
+variability_param <- 3 # Make it bigger to decrease h-index correlation
+sd <- variability_param / 2
+
+
+earth_bio_grads <- earth_bio_grads %>% 
+  mutate(h_index = salary * (1 + rnorm(grads, 0, sd))) %>% 
+  mutate(h_index = case_when(h_index < 0 ~ 0,
+                             h_index >= 0 ~ h_index)) %>% 
+  mutate(h_index = h_index / 28000) 
+
+print(cor(math_stats_grads$h_index, math_stats_grads$salary))
+
+options(scipen = 999 )
+
+plot <- ggplot(data = math_stats_grads, 
+               mapping = aes(x=h_index, 
+                             y=salary, 
+                             color=location)) +
+  geom_point() +
+  scale_x_continuous(labels = label_number()) +
+  theme_bw() +
+  labs(title="Correlation between h-index and income")
+
+print(plot)
 
 ```
+
 
 
