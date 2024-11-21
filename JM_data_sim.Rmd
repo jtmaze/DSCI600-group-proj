@@ -8,12 +8,12 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-library(dplyr)
+library(tidyverse)
 set.seed(42) # If you know, you know ! :)
 
 ```
 
-## R Earth Sciences and Biology Distribution
+## R Earth Sciences & Biology Distribution
 
 
 ```{r}
@@ -25,13 +25,12 @@ params <- list(
   ),
   beta = c('us' = 0,
            'int' = +1000
-  ),
-  # Not adding any interaction terms (gamma)
-  sigma = 1000 # Not really relevant for the gamma distribution
+  )
 )
   
 
-earth_bio_hindex_params <- list( # Doing this later
+earth_bio_hindex_params <- list(
+  mu = 9# Doing this later
 )
 
 ```
@@ -40,7 +39,7 @@ earth_bio_hindex_params <- list( # Doing this later
 sample_size <- 1000
 gamma_size <- 1000
 
-earth_bio_grads <- expand.grid(
+earth_bio_grads <- data.frame(
   post_doc = rep(NA, sample_size), 
   location = rep(NA, sample_size),
   salary = NA,
@@ -49,7 +48,7 @@ earth_bio_grads <- expand.grid(
 
 grads <- nrow(earth_bio_grads)
 
-for (r in 1:5) {
+for (r in 1:grads) {
   # randomly assign post-doc or not with proportion (0.3 post-doc, 0.7 not)
   earth_bio_grads$post_doc[r] <- sample(c('y', 'n'), size=1, prob=c(0.3, 0.7))
   # randomly assign location with proportion (0.4 international, 0.6 U.S.)
@@ -70,9 +69,12 @@ for (r in 1:5) {
   
   gamma_dist <- rgamma(gamma_size, shape = sample_shape, rate = sample_rate)
   
-  hist(gamma_dist, breaks = 50, main = "Gamma Distribution",
-     xlab = "Value", probability = TRUE, col = "lightgreen")
-  lines(density(gamma_dist), col = "blue", lwd = 2)
+  if (r %in% c(5, 67, 99, 300, 670, 900)) {
+    hist(gamma_dist, breaks = 50, main = paste("Gamma Distribution (Iteration: with", pd, " and", loc,")"),
+         xlab = "Value", probability = TRUE, col = "lightgreen")
+    lines(density(gamma_dist), col = "blue", lwd = 2)
+  }
+  
   
   salary <- sample(gamma_dist, size=1)
   print(salary)
@@ -83,27 +85,39 @@ for (r in 1:5) {
 
 ```
 
+```{r}
+
+h_index_corr <- 0.77
+
+
+earth_bio_grads <- earth_bio_grads %>% 
+  mutate(h_index = ((salary * h_index_corr) + sqrt(1 - h_index_corr * rnorm(n=grads, )
+
+
+```
 
 ```{r}
-# Parameters
-mu <- 90000
 
-shape <- 5 # Alpha (dictates skewness)
-rate <- (shape / mu)    # Beta (inverse of scale parameter)
+plot <- ggplot(earth_bio_grads, 
+               mapping=aes(x = salary)) +
+  geom_histogram(binwidth = 10000, fill = "lightblue", color = "black", alpha = 0.7) +
+  labs(title = "Salary Distribution",
+       x = "Salary",
+       y = "Frequency") +
+  theme_minimal() +
+  facet_wrap(~location)
 
-n <- 1000        # Number of samples
 
-# Simulate Gamma-distributed data
-gamma_samples <- rgamma(n, shape = shape, rate = rate)
+```
 
-sample_mean <- mean(gamma_samples)
+```{r}
 
-# Visualize
+h_index_corr <- 0.77
 
-options(scipen = 999)
-hist(gamma_samples, breaks = 50, main = "Gamma Distribution",
-     xlab = "Value", probability = TRUE, col = "lightgreen")
-lines(density(gamma_samples), col = "blue", lwd = 2)
+
+earth_bio_grads <- earth_bio_grads %>% 
+  mutate(h_index = 
+
 
 ```
 
