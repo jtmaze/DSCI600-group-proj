@@ -9,23 +9,141 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 library(dplyr)
-set.seed(42) # If you know, you know ! :)
+set.seed(42)
 
 ```
 
-## R Earth Sciences and Biology Distribution
+## Engingeering and Computer Science (Leah)
 
+In order to generate data for this field, I first set parameters for what I would expect the mean salary to be for engineer and computer science graduates based on a Google search. Then I chose a standard deviation and how much that I though post doc status and location of PhD will effect salary in our hypothetical data. 
 
-```{r}
+I used these parameters to generate salary data for 1000 subjects from a normal distribution. Then I used a mutate function with some scaling to generate h-index data that had a low-moderate correlation with salary and an h-index mean that was similar to the value I found through a Google search. 
+
+```{r set parameters, include=FALSE}
 
 eng_comp_salary_params <- list(
-  mu = 123000,
-  alpha = c('n' = -5000,
+  mu = 123000, # based on google search for mean salary
+  alpha = c('n' = -5000, # set effect of having a post doc on salary
             'y' = +20000
   ),
-  beta = c('us' = 0,
-           'int' = +1000
+  beta = c('us' = 0, #set effect of getting a PhD from the US or internationally on salary
+           'int' = 0
   ),
+  # Not adding any interaction terms (gamma)
+  sigma = 20000 #set standard deviation of population parameters
+)
+
+#make population distribution. I chose to make the engineer/computer science salary normally distributed
+population_dist <- rnorm(100000, eng_comp_salary_params$mu, eng_comp_salary_params$sigma)
+
+```
+
+```{r generate data, include=FALSE}
+sample_size <- 1000
+
+eng_comp_grads <- expand.grid(
+  post_doc = rep(NA, sample_size), 
+  location = NA,
+  salary = NA
+)
+
+for (r in 1:nrow(eng_comp_grads)) {
+  # randomly assign post-doc or not with proportion (0.3 post-doc, 0.7 not)
+  eng_comp_grads$post_doc[r] <- sample(c('y', 'n'), size=1, prob=c(0.3, 0.7))
+  # randomly assign location with proportion (0.4 international, 0.6 U.S.)
+  eng_comp_grads$location[r] <- sample(c('us', 'int'), size=1, prob=c(0.4, 0.6))
+  
+}
+# generate salary data
+for (j in 1:nrow(eng_comp_grads)) {
+  pd <- as.character(eng_comp_grads$post_doc[j]) # temp. store post doc status
+  loc <- as.character(eng_comp_grads$location[j])      # temp. store location         
+  gamma <- 0                       #no interaction, so no combination factor needed
+  eng_comp_grads$salary[j] <- (
+    sample(population_dist, 1)                        #sample randomly from the population distribution
+    + eng_comp_salary_params$alpha[pd]                # assign expected impact of other variables
+    + eng_comp_salary_params$beta[loc]                
+    + gamma                          
+  )
+}
+
+#hist(eng_comp_grads$salary) #plot salary histogram
+
+#mutate salary, manually altering scaling variables and mean of index distribution until desired mean impact and desired correlation between impact and salary is reached. Here, I picked mean h-index ~ 11 (based on a google search) and correlation ~0.3 (because we wanted h-index to be only weakly important in this field)
+
+eng_comp_grads <- eng_comp_grads |> 
+  dplyr::mutate(h_index = eng_comp_grads$salary * 0.00005 + rnorm(1000, 5, 3))
+mean_impact <- mean(eng_comp_grads$h_index)
+correlation <- cor(eng_comp_grads$salary, eng_comp_grads$h_index)
+#hist(eng_comp_grads$h_index) #plot h-index values
+
+eng_comp_grads$field <- "engineering/comp sci"
+
+```
+
+
+## Applied Life Sciences (Leah)
+
+To generate this data, I repeated the same process that I used for the engineering and computer science data, but altered the parameters to reflect more realistic numbers for this field where possible. 
+```{r set parameters, include=FALSE}
+#Repeat the same steps for Applied Life Sciences, with adjustments to salary, h-index means, and effects of post doc achievement
+appliedlife_salary_params <- list(
+  mu = 100000,
+  alpha = c('n' = -4000,
+            'y' = +25000
+  ),
+  beta = c('us' = 0,
+           'int' = 0
+  ),
+  # Not adding any interaction terms (gamma)
+  sigma = 15000
+)
+  
+population_dist <- rnorm(100000, appliedlife_salary_params$mu, appliedlife_salary_params$sigma)
+
+```
+
+```{r generate data, include=FALSE}
+sample_size <- 1000
+
+appliedlife_grads <- expand.grid(
+  post_doc = rep(NA, sample_size), 
+  location = rep(NA),
+  salary = NA
+)
+
+for (r in 1:nrow(appliedlife_grads)) {
+  # randomly assign post-doc or not with proportion (0.3 post-doc, 0.7 not)
+  appliedlife_grads$post_doc[r] <- sample(c('y', 'n'), size=1, prob=c(0.3, 0.7))
+  # randomly assign location with proportion (0.4 international, 0.6 U.S.)
+  appliedlife_grads$location[r] <- sample(c('us', 'int'), size=1, prob=c(0.4, 0.6))
+  
+  # Assign params based on pumpkin example
+}
+
+for (j in 1:nrow(appliedlife_grads)) {
+  pd <- as.character(appliedlife_grads$post_doc[j]) # temp. store post doc status
+  loc <- as.character(appliedlife_grads$location[j])      # temp. store location         
+  gamma <- 0                       #no interaction, so no combination factor needed
+  appliedlife_grads$salary[j] <- (
+    sample(population_dist, 1)                        #sample randomly from the population distribution
+    + appliedlife_salary_params$alpha[pd]                # assign expected impact of other variables
+    + appliedlife_salary_params$beta[loc]                
+    + gamma                          
+  )
+}
+
+#hist(appliedlife_grads$salary) #plot salary histogram
+
+
+appliedlife_grads <- appliedlife_grads |> 
+  dplyr::mutate(h_index = appliedlife_grads$salary * 0.00001 + rnorm(1000, 1.5, 0.5))
+mean_impact <- mean(appliedlife_grads$h_index)
+correlation <- cor(appliedlife_grads$salary, appliedlife_grads$h_index)
+hist(appliedlife_grads$h_index) #plot h-index values
+
+#appliedlife_grads$field <- "applied life sciences"
+```
   # Not adding any interaction terms (gamma)
   sigma = 20000
 )
