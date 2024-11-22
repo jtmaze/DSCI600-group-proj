@@ -1,0 +1,558 @@
+---
+title: "BI610_Assignment4"
+author: "Leah Blankenship, James Maze, Carina Ahrens"
+date: "2024-11-21"
+output: html_document
+---
+
+
+## Humanities (Carina)
+
+This data set is set up to show an impact of h-index for humanities. Graduates from the humanities with a higher h-index tend to have a higher annual income.
+Therefore the data is simulated in two subsets:
+The first subset contains 700 out of 1000 sampled academics whose papers show a lower impact in the field of humanities (lower h-index). In the second subset contains the remaining 300 data points with higher h-indexes (=higher impact).
+The data sets are generated using a normal distribution and estimates for mean salary and h-indexes. Additionally, information of completing a postdoc and location of where the Ph.D. was obtained are randomly assigned in a way that they will not show to have an impact on the annual salary for graduates from humanities.
+
+```{r for reproducablity}
+library(dplyr)
+library(ggplot2)
+
+set.seed(12)
+```
+
+```{r humanities_1 - parameters}
+# creating parameters for humanity population (lower salary group)
+# like pumpkin example
+humanities_grads_salary_params <- list(
+  mu = 90000, # mean yearly income (low income group in humanities)
+  alpha = c('n' = -5000, # post doc position (yes vs no)
+            'y' = +20000),
+  beta = c('us' = 0, # location of Ph.D. (U.S. vs international)
+           'int' = +1000
+  ),
+  # No interaction
+  sigma = 20000
+)
+```
+
+```{r humanities_1 - distribution}
+# like pumpkin example
+# creating salary for population with parameters
+distribution <- rnorm(100000, humanities_grads_salary_params$mu, humanities_grads_salary_params$sigma) # normally distributed -> rnorm
+
+sample_size <- 700 # only sampled part of data (part of lower income group in humanities)
+
+humanities_grads <- expand.grid( #setting up data frame with columns for postDoc, location and salary
+  post_doc = rep(NA, sample_size), 
+  location = rep(NA),
+  salary = NA
+)
+
+#for-loop to fill data frame with information about postDoc and location (set up to not have an impact on annual salary)
+for (r in 1:nrow(humanities_grads)) {
+  # randomly assign postDoc or not with 50/50 proportion
+  humanities_grads$post_doc[r] <- sample(c('y', 'n'), size=1, prob=c(0.5, 0.5))
+  # randomly assign location  with 50/50 proportion
+  humanities_grads$location[r] <- sample(c('us', 'int'), size=1, prob=c(0.5, 0.5))
+}
+```
+
+```{r humanities_1 - PhD & location}
+# assigning PhD & location impact here
+for (j in 1:nrow(humanities_grads)) {
+  pd <- as.character(humanities_grads$post_doc[j])
+  loc <- as.character(humanities_grads$location[j])       
+  gamma <- 0 # no interaction wanted here
+  humanities_grads$salary[j] <- (
+    sample(distribution, 1)                      
+    + humanities_grads_salary_params$alpha[pd]  
+    + humanities_grads_salary_params$beta[loc]                
+    + gamma                          
+  )
+}
+```
+
+```{r humanities_1 - histogram distribution salary}
+# hist(humanities_grads$salary)
+# abline(v=mean(humanities_grads$salary), col='red', lwd=1)
+```
+
+```{r humanities_1 h-index}
+#adding impact of h-index (mean ~10 -> normal/low impact on salary)  - trial and error to get a reasonable number here
+humanities_grads <- humanities_grads |> 
+  dplyr::mutate(h_index = humanities_grads$salary * 0.00005 + rnorm(700, 10, 4))
+mean_h_index <- mean(humanities_grads$h_index) # 14.97711 seems realistic
+correlation_h_salary <- cor(humanities_grads$salary, humanities_grads$h_index) # 0.3209226
+range_h_index <- range(humanities_grads$h_index) # ~1.8 - ~30.92
+```
+
+```{r humanities_1 - distribution h-index}
+# hist(humanities_grads$h_index)
+# abline(v=mean_h_index, col='red', lwd=1)
+```
+
+```{r humanities_2 - parameters}
+# like pumpkin example
+# Now follows the creation of data of the group in humanities with a higher h-index and a higher salary.
+# creating parameters for humanity population (higher salary group)
+humanities_grads_H_salary_params <- list(
+  mu = 140000, # mean yearly income -> set to be higher then for the first group
+  alpha = c('n' = -5000,
+            'y' = +20000
+  ),
+  beta = c('us' = 0,
+           'int' = +1000
+  ),
+  # No interaction
+  sigma = 20000
+)
+```
+
+```{r humanities_2 - distribution}
+# like pumpkin example
+distribution <- rnorm(100000, humanities_grads_H_salary_params$mu, humanities_grads_H_salary_params$sigma) # also normal distribution
+
+sample_size <- 300 # rest of population to reach 1000 data points for humanities
+
+#setting up data frame with columns for postDoc, location and salary
+humanities_grads_H <- expand.grid(
+  post_doc = rep(NA, sample_size), 
+  location = rep(NA),
+  salary = NA
+)
+
+#for-loop to fill data frame with information about postdoc and location (set up to not have an effect)
+for (r in 1:nrow(humanities_grads_H)) {
+  # randomly assign post-doc or not with 50/50 proportion
+  humanities_grads_H$post_doc[r] <- sample(c('y', 'n'), size=1, prob=c(0.5, 0.5))
+  # randomly assign location with proportion (0.4 international, 0.6 U.S.)
+  humanities_grads_H$location[r] <- sample(c('us', 'int'), size=1, prob=c(0.5, 0.5))
+}
+```
+
+```{r humanities_2 - PhD & location}
+for (j in 1:nrow(humanities_grads_H)) {
+  pd <- as.character(humanities_grads_H$post_doc[j])
+  loc <- as.character(humanities_grads_H$location[j])        
+  gamma <- 0  # no interaction wanted
+  humanities_grads_H$salary[j] <- (
+    sample(distribution, 1)
+    + humanities_grads_H_salary_params$alpha[pd]
+    + humanities_grads_H_salary_params$beta[loc]                
+    + gamma                          
+  )
+}
+```
+
+```{r humanities_2 - histogram distribution salary}
+# hist(humanities_grads_H$salary)
+# abline(v=mean(humanities_grads_H$salary), col='red', lwd=1)
+```
+
+```{r humanities_2 - h-index}
+#adding impact of h-index (mean ~25 -> higher impact on salary) - trial and error to get a reasonable number here
+humanities_grads_H <- humanities_grads_H |> 
+  dplyr::mutate(h_index = humanities_grads_H$salary * 0.00005 + rnorm(300, 25, 5))
+mean_h_index_H <- mean(humanities_grads_H$h_index) # 32.57963 seems realistic
+correlation_h_salary_H <- cor(humanities_grads_H$salary, humanities_grads_H$h_index) # 0.343683
+range_h_index_H <- range(humanities_grads_H$h_index) # ~14.06 ~48
+```
+
+```{r humanities_2 histogram distribution h-index}
+# hist(humanities_grads_H$h_index)
+# abline(v=mean(humanities_grads_H$h_index), col='red', lwd=1)
+```
+
+```{r humanities - adding together data frames of low and high income group}
+humanities <- rbind(humanities_grads, humanities_grads_H)
+humanities$field <- "humanities" # adding column for field, so data can be combined later
+```
+
+```{r humanities - histogram salary distribution}
+# histogram for full humanities salary
+# hist(humanities$salary) # a little screwed; as it was set up!
+# abline(v=mean(humanities_grads$salary), col='red', lwd=1)
+# abline(v=mean(humanities_grads_H$salary), col='red', lwd=1)
+# abline(v=mean(humanities$salary), col='blue', lwd=1)
+```
+
+```{r humanities - histogram h-index distribution}
+# histogram for full humanities salary
+# hist(humanities$h_index) # a little screwed to the right; as it was set up!
+# abline(v=mean_h_index, col='red', lwd=1)
+# abline(v=mean_h_index_H, col='red', lwd=1)
+# abline(v=mean(humanities$h_index), col='blue', lwd=1)
+```
+
+```{r humanities - scatter plot distribution salary vs h-index}
+# plot(
+#   x = humanities$salary,
+#   y = humanities$h_index,
+#   cex = 1,
+#   pch = 21,
+# )
+```
+
+## Simulating Data for Physics and Chemistry (Carina)
+For graduates of Physics and Chemistry the data set is set up to not show an impact of h-index, location or post doctorate after graduating but graduates of Physics and Chemistry on average have a higher annual salary (e.g. in comparison to graduates from the humanities).
+
+```{r PhyChem - parameters}
+# creating parameters for humanity population (higher salary than humanities)
+# like pumpkin example
+Phy_Chem_grads_salary_params <- list(
+  mu = 150000, # mean yearly income
+  alpha = c('n' = -5000, # post doc position (yes vs no)
+            'y' = +20000
+  ),
+  beta = c('us' = 0, # location of Ph.D. (U.S. vs international)
+           'int' = +1000
+  ),
+  # No interaction
+  sigma = 20000
+)
+```
+
+```{r PhyChem - distribution}
+# creating salary for population with parameters
+
+distribution <- rnorm(100000, Phy_Chem_grads_salary_params$mu, Phy_Chem_grads_salary_params$sigma) 
+
+sample_size <- 1000
+
+Phy_Chem_grads <- expand.grid( #setting up data frame with columns for postDoc, location and salary
+  post_doc = rep(NA, sample_size), 
+  location = rep(NA),
+  salary = NA
+)
+
+for (r in 1:nrow(Phy_Chem_grads)) {
+  # randomly assign postDoc or not with 50/50 proportion
+  Phy_Chem_grads$post_doc[r] <- sample(c('y', 'n'), size=1, prob=c(0.5, 0.5))
+  # randomly assign postDoc or not with 50/50 proportion
+  Phy_Chem_grads$location[r] <- sample(c('us', 'int'), size=1, prob=c(0.5, 0.5))
+}
+```
+
+```{r PhyChem - PhD & location}
+# assigning PhD & location impact here
+for (j in 1:nrow(Phy_Chem_grads)) {
+  pd <- as.character(Phy_Chem_grads$post_doc[j])
+  loc <- as.character(Phy_Chem_grads$location[j])         
+  gamma <- 0                       #no interaction wanted
+  Phy_Chem_grads$salary[j] <- (
+    sample(distribution, 1)
+    + Phy_Chem_grads_salary_params$alpha[pd]
+    + Phy_Chem_grads_salary_params$beta[loc]                
+    + gamma                          
+  )
+}
+```
+
+```{r PhyChem - histogram distribution salary}
+ # hist(Phy_Chem_grads$salary)
+ # abline(v=mean(Phy_Chem_grads$salary), col='red', lwd=1)
+```
+
+```{r PhyChem h-index}
+#adding impact of h-index (mean ~20 -> higher impact on salary) - trial and error to get a reasonable number here
+Phy_Chem_grads <- Phy_Chem_grads |> 
+  dplyr::mutate(h_index = Phy_Chem_grads$salary * 0.00005 + rnorm(1000, 20, 7))
+mean_impact <- mean(Phy_Chem_grads$h_index) # 27.5773
+correlation <- cor(Phy_Chem_grads$salary, Phy_Chem_grads$h_index) # 0.148731
+range_h_index <- range(humanities_grads$h_index) # ~1.8 - ~31
+```
+
+```{rPhyChem - histogram h-index distribution}
+# hist(Phy_Chem_grads$h_index)
+# abline(v=mean_impact, col='red', lwd=1)
+```
+
+```{r PhyChem - scatter plot distribution salary vs h-index}
+# plot(
+#   x = Phy_Chem_grads$salary,
+#   y = Phy_Chem_grads$h_index,
+#   cex = 1,
+#   pch = 21,
+# )
+```
+
+```{r Phy_Chem - adding field column}
+Phy_Chem_grads$field <- "Physics_Chemistry"
+```
+
+## Engingeering and Computer Science (Leah)
+
+In order to generate data for this field, I first set parameters for what I would expect the mean salary to be for engineer and computer science graduates based on a Google search. Then I chose a standard deviation and how much that I though post doc status and location of PhD will effect salary in our hypothetical data. 
+
+I used these parameters to generate salary data for 1000 subjects from a normal distribution. Then I used a mutate function with some scaling to generate h-index data that had a low-moderate correlation with salary and an h-index mean that was similar to the value I found through a Google search. 
+
+```{r set parameters, include=FALSE}
+
+eng_comp_salary_params <- list(
+  mu = 123000, # based on google search for mean salary
+  alpha = c('n' = -5000, # set effect of having a post doc on salary
+            'y' = +20000
+  ),
+  beta = c('us' = 0, #set effect of getting a PhD from the US or internationally on salary
+           'int' = 0
+  ),
+  # Not adding any interaction terms (gamma)
+  sigma = 20000 #set standard deviation of population parameters
+)
+
+#make population distribution. I chose to make the engineer/computer science salary normally distributed
+population_dist <- rnorm(100000, eng_comp_salary_params$mu, eng_comp_salary_params$sigma)
+
+```
+
+```{r generate data, include=FALSE}
+sample_size <- 1000
+
+eng_comp_grads <- expand.grid(
+  post_doc = rep(NA, sample_size), 
+  location = NA,
+  salary = NA
+)
+
+for (r in 1:nrow(eng_comp_grads)) {
+  # randomly assign post-doc or not with proportion (0.3 post-doc, 0.7 not)
+  eng_comp_grads$post_doc[r] <- sample(c('y', 'n'), size=1, prob=c(0.3, 0.7))
+  # randomly assign location with proportion (0.4 international, 0.6 U.S.)
+  eng_comp_grads$location[r] <- sample(c('us', 'int'), size=1, prob=c(0.4, 0.6))
+  
+}
+# generate salary data
+for (j in 1:nrow(eng_comp_grads)) {
+  pd <- as.character(eng_comp_grads$post_doc[j]) # temp. store post doc status
+  loc <- as.character(eng_comp_grads$location[j])      # temp. store location         
+  gamma <- 0                       #no interaction, so no combination factor needed
+  eng_comp_grads$salary[j] <- (
+    sample(population_dist, 1)                        #sample randomly from the population distribution
+    + eng_comp_salary_params$alpha[pd]                # assign expected impact of other variables
+    + eng_comp_salary_params$beta[loc]                
+    + gamma                          
+  )
+}
+
+#hist(eng_comp_grads$salary) #plot salary histogram
+
+#mutate salary, manually altering scaling variables and mean of index distribution until desired mean impact and desired correlation between impact and salary is reached. Here, I picked mean h-index ~ 11 (based on a google search) and correlation ~0.3 (because we wanted h-index to be only weakly important in this field)
+
+eng_comp_grads <- eng_comp_grads |> 
+  dplyr::mutate(h_index = eng_comp_grads$salary * 0.00005 + rnorm(1000, 5, 3))
+mean_impact <- mean(eng_comp_grads$h_index)
+correlation <- cor(eng_comp_grads$salary, eng_comp_grads$h_index)
+#hist(eng_comp_grads$h_index) #plot h-index values
+
+eng_comp_grads$field <- "engineering/comp sci"
+
+```
+
+
+########################################## Leah Applied life sciences
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+
+## R Earth Sciences & Biology Distribution (James)
+
+To generate this data, I used a gamma distribution. I made it so that different proportions of respondents conducted post-docs (30% yes, 70% no) and international (40% international, 60% U.S.) PhDs. To match simulated influence on salary, I adjusted the gamma distribution's mean based on the location parameter (U.S. or International) and the post-doc parameter. I calculated the rate parameter as rate = shape / mean, with the shape parameter constant for all Earth Science and Biology Grads (shape=5). For each graduate, I simulated a gamma distribution with 1000 salary observations given the appropriate parameters. Then, I randomly sampled each graduate's gamma distribution to simulate their salary. The h-index was drawn from a normal distribution, and the value was multiplied by salary. By adjusting the standard deviation of the distribution, we can strengthen or weaken the correlation with salary. 
+
+Here's the major findings on Earth Science and Bioloy PhDs:
+- Salary follows a gamma distribution with rightward skew
+- Conducting a post-doc substantially increases private-sector salary
+- International PhDs do not have a discernible impact on salary, given this sample size (power)
+- The h-index has a fairly strong correlation to graduate's salary, and h-indices are higher than Math & Stats gradautes. 
+
+```{r}
+params <- list(
+  mu = 95000,
+  alpha = c('n' = -9000,
+            'y' = +17000
+  ),
+  beta = c('us' = 0,
+           'int' = +1000
+  )
+)
+```
+
+```{r}
+sample_size <- 890
+gamma_size <- 1000
+
+earth_bio_grads <- data.frame(
+  post_doc = rep(NA, sample_size), 
+  location = rep(NA, sample_size),
+  field = 'Earth Science & Biology',
+  salary = NA,
+  h_index = NA
+)
+
+grads <- nrow(earth_bio_grads)
+
+for (r in 1:grads) {
+  # randomly assign post-doc or not with proportion (0.3 post-doc, 0.7 not)
+  earth_bio_grads$post_doc[r] <- sample(c('y', 'n'), size=1, prob=c(0.3, 0.7))
+  # randomly assign location with proportion (0.4 international, 0.6 U.S.)
+  earth_bio_grads$location[r] <- sample(c('us', 'int'), size=1, prob=c(0.4, 0.6))
+  
+  # Assign params 
+  pd <- as.character(earth_bio_grads$post_doc[r])
+  loc <- as.character(earth_bio_grads$location[r])
+  full_mu = params$mu
+  alpha = params$alpha[pd]
+  beta = params$beta[loc]
+  
+  sample_mu <- full_mu + alpha + beta
+  
+  sample_shape <- 5
+  sample_rate <- (sample_shape / sample_mu)
+  
+  gamma_dist <- rgamma(gamma_size, shape = sample_shape, rate = sample_rate)
+  
+  if (r %in% c(5, 99, 900)) {
+    hist(gamma_dist, breaks = 50, main = paste("Gamma Distribution (Iteration: with", pd, " and", loc,")"),
+         xlab = "Value", probability = TRUE, col = "lightgreen")
+    lines(density(gamma_dist), col = "blue", lwd = 2)
+  }
+  
+  salary <- sample(gamma_dist, size=1)
+  
+  earth_bio_grads$salary[r] <- salary
+}
+```
+
+```{r}
+
+variability_param <- 0.5 # Make it bigger to decrease h-index correlation
+sd <- variability_param / 2
+
+earth_bio_grads <- earth_bio_grads %>% 
+  mutate(h_index = salary * (1 + rnorm(grads, 0, sd))) %>% 
+  mutate(h_index = case_when(h_index < 0 ~ 0,
+                             h_index >= 0 ~ h_index)) %>% 
+  mutate(h_index = h_index / 11000) 
+
+print(cor(earth_bio_grads$h_index, earth_bio_grads$salary))
+
+options(scipen = 999 )
+
+plot <- ggplot(data = earth_bio_grads, 
+               mapping = aes(x=h_index, 
+                             y=salary, 
+                             color=post_doc)) +
+  geom_point() +
+  #scale_x_continuous(labels = label_number()) +
+  theme_bw() +
+  labs(title="Correlation between h-index and income")
+
+print(plot)
+```
+
+## Math and Statistics Grads (James)
+
+The Math and Statistics graduates were simulated with the same steps as Earth Sciences and Biology graduates; however, the parameters and thus, the overall findings are different. 
+
+- Overall, the mean salary is much higher for Math and Statistics PhDs, and the variance is much higher. (i.e. the gamma distribution has a smaller shape parameter (3.5 instead of 5). This means these graduates will have some extremely high earners. 
+- Conducting a post-doc will have a small, but likely un-observable impact on private sector salary. 
+- U.S. students Math and Statistics Students generally have higher salaries than international students.
+- h-index has a relatively weak correlation with 
+
+
+
+```{r}
+
+params <- list(
+  mu = 152000,
+  alpha = c('n' = -1000,
+            'y' = +4000
+  ),
+  beta = c('us' = +20000,
+           'int' = -2500
+  )
+)
+```
+
+```{r}
+
+sample_size <- 525
+gamma_size <- 1000
+
+math_stats_grads <- data.frame(
+  post_doc = rep(NA, sample_size), 
+  location = rep(NA, sample_size),
+  field = 'Math & Statistics',
+  salary = NA,
+  h_index = NA
+)
+
+grads <- nrow(math_stats_grads)
+
+for (r in 1:grads) {
+  # randomly assign post-doc or not with proportion (0.3 post-doc, 0.7 not)
+  math_stats_grads$post_doc[r] <- sample(c('y', 'n'), size=1, prob=c(0.15, 0.85))
+  # randomly assign location with proportion (0.4 international, 0.6 U.S.)
+  math_stats_grads$location[r] <- sample(c('us', 'int'), size=1, prob=c(0.75, 0.25))
+  
+  # Assign params 
+  pd <- as.character(math_stats_grads$post_doc[r])
+  loc <- as.character(math_stats_grads$location[r])
+  full_mu = params$mu
+  alpha = params$alpha[pd]
+  beta = params$beta[loc]
+  
+  sample_mu <- full_mu + alpha + beta
+  
+  sample_shape <- 3.5
+  sample_rate <- (sample_shape / sample_mu)
+  
+  gamma_dist <- rgamma(gamma_size, shape = sample_shape, rate = sample_rate)
+  
+  if (r %in% c(5, 99, 500)) {
+    hist(gamma_dist, breaks = 50, main = paste("Gamma Distribution (Iteration: with", pd, " and", loc,")"),
+         xlab = "Value", probability = TRUE, col = "lightgreen")
+    lines(density(gamma_dist), col = "blue", lwd = 2)
+  }
+  
+  salary <- sample(gamma_dist, size=1)
+  
+  math_stats_grads$salary[r] <- salary
+}
+```
+
+```{r}
+
+variability_param <- 3 # Make it bigger to decrease h-index correlation
+sd <- variability_param / 2
+
+
+earth_bio_grads <- earth_bio_grads %>% 
+  mutate(h_index = salary * (1 + rnorm(grads, 0, sd))) %>% 
+  mutate(h_index = case_when(h_index < 0 ~ 0,
+                             h_index >= 0 ~ h_index)) %>% 
+  mutate(h_index = h_index / 28000) 
+
+print(cor(math_stats_grads$h_index, math_stats_grads$salary))
+
+options(scipen = 999 )
+
+plot <- ggplot(data = math_stats_grads, 
+               mapping = aes(x=h_index, 
+                             y=salary, 
+                             color=location)) +
+  geom_point() +
+  #scale_x_continuous(labels = label_number()) +
+  theme_bw() +
+  labs(title="Correlation between h-index and income")
+
+print(plot)
+
+```
+
+```{r combining data frames & exporting}
+academia <- rbind(humanities, Phy_Chem_grads, eng_comp_grads, earth_bio_grads, math_stats_grads)
+table(academia$field)
+write.csv(academia, file='Bi610_dataSet_academia.csv', row.names=FALSE)
+```
+
