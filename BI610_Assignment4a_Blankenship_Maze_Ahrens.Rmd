@@ -10,7 +10,7 @@ output: html_document
 
 This data set is set up to show an impact of h-index for humanities. Graduates from the humanities with a higher h-index tend to have a higher annual income.
 Therefore the data is simulated in two subsets:
-The first subset contains 700 out of 1000 sampled academics whose papers show a lower impact in the field of humanities (lower h-index). In the second subset contains the remaining 300 data points with higher h-indexes (=higher impact).
+The first subset contains 700 out of 1000 sampled academics whose papers show a lower impact in the field of humanities (lower h-index). The second subset contains the remaining 300 data points with higher h-indexes (= higher impact) and thus a higher salary.
 The data sets are generated using a normal distribution and estimates for mean salary and h-indexes. Additionally, information of completing a postdoc and location of where the Ph.D. was obtained are randomly assigned in a way that they will not show to have an impact on the annual salary for graduates from humanities.
 
 ```{r for reproducablity}
@@ -92,8 +92,8 @@ range_h_index <- range(humanities_grads$h_index) # ~1.8 - ~30.92
 ```
 
 ```{r humanities_2 - parameters}
-# like pumpkin example
 # Now follows the creation of data of the group in humanities with a higher h-index and a higher salary.
+# like pumpkin example
 # creating parameters for humanity population (higher salary group)
 humanities_grads_H_salary_params <- list(
   mu = 140000, # mean yearly income -> set to be higher then for the first group
@@ -214,7 +214,6 @@ Phy_Chem_grads_salary_params <- list(
 
 ```{r PhyChem - distribution}
 # creating salary for population with parameters
-
 distribution <- rnorm(100000, Phy_Chem_grads_salary_params$mu, Phy_Chem_grads_salary_params$sigma) 
 
 sample_size <- 1000
@@ -262,7 +261,7 @@ correlation <- cor(Phy_Chem_grads$salary, Phy_Chem_grads$h_index) # 0.148731
 range_h_index <- range(humanities_grads$h_index) # ~1.8 - ~31
 ```
 
-```{rPhyChem - histogram h-index distribution}
+```{r PhyChem - histogram h-index distribution}
 # hist(Phy_Chem_grads$h_index)
 # abline(v=mean_impact, col='red', lwd=1)
 ```
@@ -420,7 +419,7 @@ Here's the major findings on Earth Science and Bioloy PhDs:
 - Salary follows a gamma distribution with rightward skew
 - Conducting a post-doc substantially increases private-sector salary
 - International PhDs do not have a discernible impact on salary, given this sample size (power)
-- The h-index has a fairly strong correlation to graduate's salary, and h-indices are higher than Math & Stats gradautes. 
+- The h-index has a fairly strong correlation to graduate's salary, and h-indices are higher than Math & Stats graduates. 
 
 ```{r}
 params <- list(
@@ -468,11 +467,11 @@ for (r in 1:grads) {
   
   gamma_dist <- rgamma(gamma_size, shape = sample_shape, rate = sample_rate)
   
-  if (r %in% c(5, 99, 900)) {
-    hist(gamma_dist, breaks = 50, main = paste("Gamma Distribution (Iteration: with", pd, " and", loc,")"),
-         xlab = "Value", probability = TRUE, col = "lightgreen")
-    lines(density(gamma_dist), col = "blue", lwd = 2)
-  }
+  # if (r %in% c(5, 99, 900)) {
+  #   hist(gamma_dist, breaks = 50, main = paste("Gamma Distribution (Iteration: with", pd, " and", loc,")"),
+  #        xlab = "Value", probability = TRUE, col = "lightgreen")
+  #   lines(density(gamma_dist), col = "blue", lwd = 2)
+  # }
   
   salary <- sample(gamma_dist, size=1)
   
@@ -481,7 +480,6 @@ for (r in 1:grads) {
 ```
 
 ```{r}
-
 variability_param <- 0.5 # Make it bigger to decrease h-index correlation
 sd <- variability_param / 2
 
@@ -495,16 +493,16 @@ print(cor(earth_bio_grads$h_index, earth_bio_grads$salary))
 
 options(scipen = 999 )
 
-plot <- ggplot(data = earth_bio_grads, 
-               mapping = aes(x=h_index, 
-                             y=salary, 
-                             color=post_doc)) +
-  geom_point() +
-  #scale_x_continuous(labels = label_number()) +
-  theme_bw() +
-  labs(title="Correlation between h-index and income")
-
-print(plot)
+# plot <- ggplot(data = earth_bio_grads, 
+#                mapping = aes(x=h_index, 
+#                              y=salary, 
+#                              color=post_doc)) +
+#   geom_point() +
+#   #scale_x_continuous(labels = label_number()) +
+#   theme_bw() +
+#   labs(title="Correlation between h-index and income")
+# 
+# print(plot)
 ```
 
 ## Math and Statistics Grads (James)
@@ -515,8 +513,6 @@ The Math and Statistics graduates were simulated with the same steps as Earth Sc
 - Conducting a post-doc will have a small, but likely un-observable impact on private sector salary. 
 - U.S. students Math and Statistics Students generally have higher salaries than international students.
 - h-index has a relatively weak correlation with 
-
-
 
 ```{r}
 
@@ -566,11 +562,11 @@ for (r in 1:grads) {
   
   gamma_dist <- rgamma(gamma_size, shape = sample_shape, rate = sample_rate)
   
-  if (r %in% c(5, 99, 500)) {
-    hist(gamma_dist, breaks = 50, main = paste("Gamma Distribution (Iteration: with", pd, " and", loc,")"),
-         xlab = "Value", probability = TRUE, col = "lightgreen")
-    lines(density(gamma_dist), col = "blue", lwd = 2)
-  }
+  # if (r %in% c(5, 99, 500)) {
+  #   hist(gamma_dist, breaks = 50, main = paste("Gamma Distribution (Iteration: with", pd, " and", loc,")"),
+  #        xlab = "Value", probability = TRUE, col = "lightgreen")
+  #   lines(density(gamma_dist), col = "blue", lwd = 2)
+  # }
   
   salary <- sample(gamma_dist, size=1)
   
@@ -594,22 +590,43 @@ print(cor(math_stats_grads$h_index, math_stats_grads$salary))
 
 options(scipen = 999 )
 
-plot <- ggplot(data = math_stats_grads, 
-               mapping = aes(x=h_index, 
-                             y=salary, 
-                             color=location)) +
-  geom_point() +
-  #scale_x_continuous(labels = label_number()) +
-  theme_bw() +
-  labs(title="Correlation between h-index and income")
-
-print(plot)
+# plot <- ggplot(data = math_stats_grads, 
+#                mapping = aes(x=h_index, 
+#                              y=salary, 
+#                              color=location)) +
+#   geom_point() +
+#   #scale_x_continuous(labels = label_number()) +
+#   theme_bw() +
+#   labs(title="Correlation between h-index and income")
+# 
+# print(plot)
 
 ```
 
 ```{r combining data frames & exporting}
 academia <- rbind(humanities, Phy_Chem_grads, eng_comp_grads, earth_bio_grads, math_stats_grads)
-table(academia$field)
 write.csv(academia, file='Bi610_dataSet_academia.csv', row.names=FALSE)
 ```
 
+```{r academia - checkin data}
+#table(academia$field)
+#table(academia$post_doc)
+#table(academia$location)
+```
+
+```{r academia - histogram salary distribution}
+# hist(academia$salary)
+```
+
+```{r academia - histogram h-index distribution}
+# hist(academia$h_index)
+```
+
+```{r academia - scatter plot distribution salary vs h-index}
+# plot(
+#   x = academia$salary,
+#   y = academia$h_index,
+#   cex = 1,
+#   pch = 21,
+# )
+```
