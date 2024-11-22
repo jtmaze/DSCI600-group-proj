@@ -348,12 +348,69 @@ eng_comp_grads$field <- "engineering/comp sci"
 
 ```
 
+## Applied Life Sciences (Leah)
 
-########################################## Leah Applied life sciences
-################################################################################
-################################################################################
-################################################################################
-################################################################################
+To generate this data, I repeated the same process that I used for the engineering and computer science data, but altered the parameters to reflect more realistic numbers for this field where possible. 
+
+```{r set parameters, include=FALSE}
+#Repeat the same steps for Applied Life Sciences, with adjustments to salary, h-index means, and effects of post doc achievement
+appliedlife_salary_params <- list(
+  mu = 100000,
+  alpha = c('n' = -4000,
+            'y' = +25000
+  ),
+  beta = c('us' = 0,
+           'int' = 0
+  ),
+  # Not adding any interaction terms (gamma)
+  sigma = 15000
+)
+  
+population_dist <- rnorm(100000, appliedlife_salary_params$mu, appliedlife_salary_params$sigma)
+
+```
+
+```{r generate data, include=FALSE}
+sample_size <- 1000
+
+appliedlife_grads <- expand.grid(
+  post_doc = rep(NA, sample_size), 
+  location = rep(NA),
+  salary = NA
+)
+
+for (r in 1:nrow(appliedlife_grads)) {
+  # randomly assign post-doc or not with proportion (0.3 post-doc, 0.7 not)
+  appliedlife_grads$post_doc[r] <- sample(c('y', 'n'), size=1, prob=c(0.3, 0.7))
+  # randomly assign location with proportion (0.4 international, 0.6 U.S.)
+  appliedlife_grads$location[r] <- sample(c('us', 'int'), size=1, prob=c(0.4, 0.6))
+  
+  # Assign params based on pumpkin example
+}
+
+for (j in 1:nrow(appliedlife_grads)) {
+  pd <- as.character(appliedlife_grads$post_doc[j]) # temp. store post doc status
+  loc <- as.character(appliedlife_grads$location[j])      # temp. store location         
+  gamma <- 0                       #no interaction, so no combination factor needed
+  appliedlife_grads$salary[j] <- (
+    sample(population_dist, 1)                        #sample randomly from the population distribution
+    + appliedlife_salary_params$alpha[pd]                # assign expected impact of other variables
+    + appliedlife_salary_params$beta[loc]                
+    + gamma                          
+  )
+}
+
+#hist(appliedlife_grads$salary) #plot salary histogram
+
+
+appliedlife_grads <- appliedlife_grads |> 
+  dplyr::mutate(h_index = appliedlife_grads$salary * 0.00001 + rnorm(1000, 1.5, 0.5))
+mean_impact <- mean(appliedlife_grads$h_index)
+correlation <- cor(appliedlife_grads$salary, appliedlife_grads$h_index)
+hist(appliedlife_grads$h_index) #plot h-index values
+
+appliedlife_grads$field <- "applied life sciences"
+```
 
 ## R Earth Sciences & Biology Distribution (James)
 
