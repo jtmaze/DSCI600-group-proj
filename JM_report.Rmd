@@ -1,0 +1,86 @@
+---
+title: "prelim-analysis-JM"
+output: html_document
+date: "2024-11-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+
+```
+
+
+```{r}
+lizards <- read.table('FullyLoadedLizards.tsv') %>% 
+  select(-c('individuals'))
+
+summary <- lizards %>%
+  group_by(species, lighting, tank, substrate) %>% 
+  summarise(mean_wt = mean(weight),
+            sd_wt = sd(weight))
+
+species_mean_weights <- lizards %>% 
+  group_by(species) %>% 
+  summarise(species_mean_wt = mean(weight))
+
+```
+
+### Interaction plot for lizards across treatments
+
+```{r}
+inter <- summary %>% 
+  mutate('all_conditions' = paste(lighting, tank, substrate, sep='-')) %>% 
+  mutate('substrate_tank' = paste(substrate, tank, sep='-')) %>% 
+  # Normalize the species weights for the interaction plot
+  left_join(species_mean_weights, by='species') %>% 
+  rename(species_mean_weight = species_mean_wt) %>% 
+  mutate(mean_wt_normalized = mean_wt / species_mean_weight) %>% 
+  mutate(sd_wt_normalized = sd_wt / species_mean_weight)
+
+```
+
+```{r}
+  
+inter_plot <- ggplot(data=inter, mapping=aes(x=all_conditions, y=mean_wt_normalized, color=species)) +
+  geom_point(size=2) +
+  geom_errorbar(aes(ymin = (mean_wt - sd_wt) / species_mean_weight,
+                    ymax = (mean_wt + sd_wt) / species_mean_weight),
+                width=0.2) +
+  labs(title='Full interaction plot all treatment categories') +
+  theme_bw() +
+  theme(
+    axis.text.x=element_text(angle=90, face='bold', size=8),
+    axis.title.x = element_blank(),
+    legend.position = c(0.95, 0.95),
+    legend.title = element_blank(),
+    legend.text = element_text(siz=6, face='bold')
+  )
+
+(inter_plot)
+
+```
+```{r}
+inter_lighting_plot <- ggplot(data=inter, mapping=aes(x=substrate_tank, y=mean_wt_normalized, color=species)) +
+  facet_wrap(~lighting) +
+  geom_point(size=2) +
+  geom_line(linewidth=1) +
+  geom_errorbar(aes(ymin = (mean_wt - sd_wt) / species_mean_weight,
+                    ymax = (mean_wt + sd_wt) / species_mean_weight),
+                width=0.2) +
+  labs(title='Full interaction plots faceted by lighting') +
+  theme_bw() +
+  theme(
+    axis.text.x=element_text(angle=90, face='bold', size=8),
+    axis.title.x = element_blank(),
+    legend.position = c(0.95, 0.95),
+    legend.title = element_blank(),
+    legend.text = element_text(siz=6, face='bold')
+  )
+
+(inter_lighting_plot)
+```
+
