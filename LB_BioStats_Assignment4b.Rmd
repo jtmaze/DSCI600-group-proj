@@ -1,0 +1,158 @@
+---
+title: "Biostats_Assignment4b"
+author: "LeahB"
+date: "2024-12-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+``` {r load in packages, include=FALSE}
+library("ggplot2")
+library("dplyr")
+library("tidyverse")
+
+```
+
+``` {r load in data and subset the data, include=FALSE}
+#load in the data and give each species a shorter name for ease of analysis
+lizards <- read.table("FullyLoadedLizards.tsv", sep=' ', header=TRUE, quote='"')
+lizards$Species <- lizards$species
+lizards[lizards$Species %in% c("bearded dragon"), "Species"] <-  "Dragon"
+lizards[lizards$Species %in% c("chameleon"), "Species"] <-  "Chameleon"
+lizards[lizards$Species %in% c("crested gecko"), "Species"] <-  "Gecko"
+lizards <- lizards %>% group_by(species) %>% mutate(normalized = weight/mean(weight))
+
+#subset the data by species
+dragon <- subset(lizards, subset=species %in% c("bearded dragon"))
+chameleon <- subset(lizards, subset=species %in% c("chameleon"))
+gecko <- subset(lizards, subset=species %in% c("crested gecko"))
+```
+
+```{r examine weight by species, echo=FALSE}
+#plot distibution of weight for each species
+par(mfrow = c(1, 3))
+hist(dragon$weight, xlab="Weight (g)", breaks = 20,  main="Weight - Bearded Dragon")
+abline(v=mean(dragon$weight), col='red', lwd=1)
+hist(chameleon$weight, xlab="Weight (g)", breaks = 20,  main="Weight - Chameleon")
+abline(v=mean(chameleon$weight), col='red', lwd=1)
+hist(gecko$weight, xlab="Weight (g)", breaks = 20,  main="Weight - Crested Gecko")
+abline(v=mean(gecko$weight), col='red', lwd=1)
+```
+
+```{r examine weight of all lizards, echo=FALSE}
+#plot the distribution of weight for all lizards
+hist(lizards$weight, xlab="Weight (g)", breaks = 100,  main="Weight - All Lizards")
+abline(v=mean(lizards$weight), col='red', lwd=2)
+abline(v=mean(dragon$weight), col='orange', lwd=1)
+abline(v=mean(chameleon$weight), col='green4', lwd=1)
+abline(v=mean(gecko$weight), col='blue', lwd=1)
+legend("topright", legend=c("Mean for all lizards", "Mean for Crested Geckos", "Mean for Chameleons", "Mean for Bearded Dragons"),  fill = c("red","blue","green4","orange"))
+
+```
+
+```{r examine effect of tank size on weight}
+ggplot(lizards,aes(x = lighting, y =normalized)) + 
+geom_boxplot(fill='green4') +
+  labs(x = "Lighting", y= "Normalized weight")
+
+```
+``` {r examine effects of lighting in interaction plot, echo=FALSE}
+# plot effects of lighting on weight by species 
+ggplot(lizards, aes(x = species, y = normalized, group = lighting, color = lighting)) +
+  stat_summary(fun = "mean", geom = "point", size = 1.5) +
+  stat_summary(fun = "mean", geom = "line") +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = .2) +
+  scale_color_manual(values = c("blue", "red", "green4", "orange")) +
+  ggtitle("Normalized Weight by Species and Lighting") +
+  labs(x="Species", y="Normalized Weight", color = "Lighting") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+```{r examine effect of tank size on weight}
+ggplot(lizards,aes(x = tank, y =normalized)) + 
+geom_boxplot(fill='green4') +
+  labs(x = "Tank size", y= "Normalized weight")
+
+```
+``` {r examine effects of tank size in interaction plot, echo=FALSE}
+# plot effects of tank size on weight by species 
+ggplot(lizards, aes(x = species, y = normalized, group = tank, color = tank)) +
+  stat_summary(fun = "mean", geom = "point", size = 1.5) +
+  stat_summary(fun = "mean", geom = "line") +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = .2) +
+  scale_color_manual(values = c("blue", "red", "green4", "orange")) +
+  ggtitle("Normalized Weight by Species and Tank Size") +
+  labs(x="Species", y="Normalized Weight (g)", color = "Tank Size") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r examine effect of substrate on weight}
+ggplot(lizards,aes(x = substrate, y =normalized)) + 
+geom_boxplot(fill='green4') +
+  labs(x = "Substrate", y= "Normalized weight")
+
+```
+``` {r examine effects of substrate in interaction plot, echo=FALSE}
+# plot effects of substrate on weight by species 
+ggplot(lizards, aes(x = species, y = normalized, group = substrate, color = substrate)) +
+  stat_summary(fun = "mean", geom = "point", size = 1.5) +
+  stat_summary(fun = "mean", geom = "line") +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = .2) +
+  scale_color_manual(values = c("blue", "red", "green4", "orange")) +
+  ggtitle("Normalized Weight by Species and Substrate") +
+  labs(x="Species", y="Normalized Weight", color = "Substrate") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+``` {r examine effect of each variable, include=FALSE}
+summary(lm(normalized ~ (lighting + tank + substrate + species)^2, data=lizards))
+```
+
+``` {r examine effect of each variable on geckos, include=FALSE}
+summary(lm(weight ~ (lighting + tank + substrate)^2, data=gecko))
+```
+
+``` {r examine effect of each variable on bearded dragons, include=FALSE}
+summary(lm(weight ~ (lighting + tank + substrate)^2, data=dragon))
+```
+
+``` {r examine effect of each variable on chameleons, include=FALSE}
+summary(lm(weight ~ (lighting + tank + substrate)^2, data=chameleon))
+```
+
+``` {r plot interactions between all variables, echo=FALSE}
+inter <- summary %>% 
+  mutate('all_conditions' = paste(lighting, tank, substrate, sep='-')) %>% 
+  mutate('substrate_tank' = paste(substrate, tank, sep='-')) %>% 
+  # Normalize the species weights for the interaction plot
+  left_join(species_mean_weights, by='species') %>% 
+  rename(species_mean_weight = species_mean_wt) %>% 
+  mutate(mean_wt_normalized = mean_wt / species_mean_weight) %>% 
+  mutate(sd_wt_normalized = sd_wt / species_mean_weight)
+
+inter_lighting_plot <- ggplot(data=inter, mapping=aes(x=substrate_tank, y=mean_wt_normalized, color=species)) +
+  facet_wrap(~lighting) +
+  geom_point(size=2) +
+  geom_line(linewidth=1) +
+  geom_errorbar(aes(ymin = (mean_wt - sd_wt) / species_mean_weight,
+                    ymax = (mean_wt + sd_wt) / species_mean_weight),
+                width=0.2) +
+  labs(title='Full interaction plots faceted by lighting', y='Normalized Mean Weight') +
+  theme_bw() +
+  theme(
+    axis.text.x=element_text(angle=90, face='bold', size=8),
+    axis.title.x = element_blank(),
+    legend.position = c(0.94,1.05),
+    legend.title = element_blank(),
+    legend.text = element_text(siz=6, face='bold')
+  )
+
+(inter_lighting_plot)
+```
