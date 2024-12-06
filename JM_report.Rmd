@@ -1,86 +1,240 @@
 ---
-title: "prelim-analysis-JM"
+title: "Assignment 4b:Fully Loaded Lizards"
 output: html_document
 date: "2024-11-27"
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
 library(tidyverse)
-
+library(knitr)
 ```
+#### Report objective: An executive summary to the Oregon Veterinary Medical Association (OVMA) describing analysis for optimal growing conditions for 3 popular lizard breeds.  
 
+## Section #1: Visualize/summarize lizard weights across species and growing condtions.
+
+To understand each lizard specie's mean weight, variance, and shape of the distribution, we generate simple histograms for each species in Figure #1. The vertical lines mark the mean weight for each species. The immediate finding is that Bearded Dragons have a much higher standard deviation (sd=110 grams) and mean weight (mean=446 grams) compared to chameleons (sd=31 grams, mean=119 grams) and crested geckos (sd=24 grams, mean=102 grams), which are fairly similar. Both chameleons and crested geckos have approximately normal distributions, but the distribution of bearded dragons is less apparent due to plot scales. In separate figure (not shown), we allow free-scales for the histograms, and the bearded dragon weights are also normally distributed. Normally distributed weights are helpful for our analysis. Furthermore the variance is approximately equal across all species (coefficient of variation between 0.23 and 0.27). We also note the study is perfectly balanced (i.e. equal samples across all the species and treatments). 
+
+As requested by the OVMA, table #1: Crested Geckos, table #2: Chameleons, and table #3: Bearded Dragons, describes the mean weight and standard deviations for all the lizards across the full range of species and growing conditions. We also add the coefficient of variation for growing treatment. While this table is dense with information, the OVMA asked for a comprehensive overview. 
+
+Figure #2 demonstrates our first major finding that substrate does not influence growth rate across all species. Additionally, our modeling (see section #2) found zero interactions between substrate and other factors. For these reasons, we will exclude the substrate from our visualizations going forward. 
+
+Figure #3 shows how larger tank sizes benefit growth across all three lizard species and all four light treatments. For each group of light treatments mean weight increases with tank size. The figure also shows how heat alone has a negative impact on species weight. Even with the benefit of 40 gallon tank, almost all the lizards with heat treatment are below the species average indicated by the dashed line (normalized weight = 1). All the species grow largest with the full UVA/UVB/Heat light treatment. 
 
 ```{r}
 lizards <- read.table('FullyLoadedLizards.tsv') %>% 
-  select(-c('individuals'))
+  select(-c(individuals, mean_weight))
 
 summary <- lizards %>%
   group_by(species, lighting, tank, substrate) %>% 
   summarise(mean_wt = mean(weight),
-            sd_wt = sd(weight))
+            sd_wt = sd(weight)) %>% 
+  mutate(species_cov_wt = sd_wt / mean_wt) %>% 
+  ungroup()
 
 species_mean_weights <- lizards %>% 
   group_by(species) %>% 
-  summarise(species_mean_wt = mean(weight))
+  summarise(species_mean_wt = mean(weight),
+            species_sd_wt = sd(weight)) %>% 
+  mutate(species_cov_wt = species_sd_wt / species_mean_wt)
+
+geckos_summary <- summary %>% 
+  filter(species == 'crested gecko') %>% 
+  select(-c(species)) %>% 
+  mutate(across(c(mean_wt, sd_wt), ~ round(.)),
+         species_cov_wt = round(species_cov_wt, 2)) %>% 
+  arrange(desc(mean_wt)) 
+
+chameleon_summary <- summary %>% 
+  filter(species == 'chameleon') %>% 
+  select(-c(species)) %>% 
+  mutate(across(c(mean_wt, sd_wt), ~ round(.)),
+         species_cov_wt = round(species_cov_wt, 2)) %>% 
+  arrange(desc(mean_wt))
+
+dragons_summary <- summary %>% 
+  filter(species == 'bearded dragon') %>% 
+  select(-c(species)) %>% 
+  mutate(across(c(mean_wt, sd_wt), ~ round(.)),
+         species_cov_wt = round(species_cov_wt, 2)) %>% 
+  arrange(desc(mean_wt))
+
+# check = lizards %>% 
+#   group_by(species, lighting, tank, substrate) %>% 
+#   summarise(check_wt = first(mean_weight))
+# 
+# dragon_check <- check %>% 
+#   filter(species == 'bearded dragon')
+# 
+# chameleon_check <- check %>% 
+#   filter(species == 'chameleon')
+# 
+# gecko_check <- check %>% 
+#   filter(species == 'crested gecko')
+
+```
+```{r}
+
+weight_hist <- ggplot(data=lizards,
+                      mapping=aes(x=weight,
+                                  fill=species)
+                      ) +
+  facet_wrap(~species, nrow=3, scales='fixed') +
+  geom_histogram(bins=50) +
+  geom_vline(data=species_mean_weights, aes(xintercept=species_mean_wt)) +
+  labs(title='Figure #1: Lizard weights by species') +
+  theme_bw()
+
+(weight_hist)
+
+```
+```{r}
+# kable(geckos_summary, caption = "Table #1: Crested Gecko weights and variance across all conditions")
+# kable(chameleon_summary, caption = "Table #1: Chameleon weights and variance across all conditions")
+# kable(dragons_summary, caption = "Table #1: Bearded Dragon weights and variance across all conditions")
+# 
+# rm(geckos_summary, dragons_summary, chameleon_summary)
 
 ```
 
-### Interaction plot for lizards across treatments
+``` {r}
+
+substrate_box <- ggplot(data=lizards,
+                        mapping=aes(x=substrate, y=weight)) +
+  facet_wrap(~species) +
+  geom_boxplot() +
+  theme_bw() +
+  labs(title='Figure #2: Substrate Impact')
+
+print(substrate_box)
+
+```
+
+```{r, fig.width=10, fig.height=12}
+
+big_box_df <- lizards %>% 
+  left_join(species_mean_weights, by='species') %>% 
+  mutate('conditions_no_substrate' = paste(lighting, tank, sep='-'),
+         weight_normalized = (weight / species_mean_wt))
+
+big_box_plot <- ggplot(data=big_box_df, mapping=aes(x=conditions_no_substrate,
+                                                 y=weight_normalized,
+                                                 color=lighting)) +
+  facet_wrap(~species, nrow=3) +
+  geom_hline(yintercept=1, color='black', linetype='dashed') +
+  geom_boxplot(fill='darkgrey') +
+  scale_color_manual(values = c("Heat" = "brown",
+                                "Heat/UVA" = "orange",
+                                "Heat/UVB" = "gold",
+                                "Heat/UVA&UVB" = "darkgreen")) +
+  theme_bw() +
+  labs(title='Figure 3: Lighting and tank size impact on weight across species') +
+  ylab('Normalized Weight (by species mean)') +
+  theme(axis.text.x=element_text(angle=90, face='bold', size=8),
+        axis.title.x = element_blank())
+
+print(big_box_plot)
+```
+
+## Section #2: Modeling and interactions between variables
+
+We implemented linear model to determine the impact of treatments on weight, and explore potential interactions. The model confirms our simple determinations from section #1. 
+- Substrate does not impact growth, with no significant interactions between substrate and othr factors (p > 0.05)
+- Larger tank size benefits growth (p < 0.0001)
+- The optimal light treatment is UVA/UVB/Heat (p < 0.0001), and that heat alone is deleterious. 
+
 
 ```{r}
-inter <- summary %>% 
-  mutate('all_conditions' = paste(lighting, tank, substrate, sep='-')) %>% 
-  mutate('substrate_tank' = paste(substrate, tank, sep='-')) %>% 
-  # Normalize the species weights for the interaction plot
+# lizards$species <- as.factor(lizards$species)
+# lizards$lighting <- as.factor(lizards$lighting)
+# lizards$tank <- as.factor(lizards$tank)
+# lizards$substrate <- as.factor(lizards$substrate)
+# 
+# full_model <- lm(weight ~ species * lighting * substrate * tank, data=lizards)
+# 
+# summary(full_model)
+
+```
+
+```{r}
+
+species_heat_inter <- ggplot(big_box_df, aes(x = species, y = weight_normalized, group = lighting, color = lighting)) +
+  stat_summary(fun = "mean", geom = "point", size = 1.5) +
+  stat_summary(fun = "mean", geom = "line") +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = .2) +
+  scale_color_manual(values = c("Heat" = "brown",
+                                "Heat/UVA" = "orange",
+                                "Heat/UVB" = "gold",
+                                "Heat/UVA&UVB" = "darkgreen")) +
+  ggtitle("Species and lighting interaction (Normalized by Weight)") +
+  labs(x="Species", y="Normalized Weight", color = "Lighting") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+(species_heat_inter)
+
+```
+
+
+## Conclusions for OVMA:
+
+#### 1.0) Substrate does not impact lizard growth across all species
+#### 2.0) All species benefit from larger tank sizes. 40 gallon tanks consistently produce larger lizards with no negative interactions across other growing conditions such as light. 
+#### 3.0) All lizards grow best under the full light treatment (UVA/UVB/Heat). Importantly, heat without UV had a deleterious impact on lizarda growth. There's an interesting interaction between species and lighting type. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+inter2 <- lizards %>% 
+  group_by(species, lighting, tank) %>% 
+  summarize(mean_wt = mean(weight),
+            sd_wt = sd(weight)) %>% 
+  mutate('all_conditions' = paste(lighting, tank, sep='-')) %>% 
   left_join(species_mean_weights, by='species') %>% 
   rename(species_mean_weight = species_mean_wt) %>% 
   mutate(mean_wt_normalized = mean_wt / species_mean_weight) %>% 
   mutate(sd_wt_normalized = sd_wt / species_mean_weight)
-
-```
-
-```{r}
   
-inter_plot <- ggplot(data=inter, mapping=aes(x=all_conditions, y=mean_wt_normalized, color=species)) +
-  geom_point(size=2) +
-  geom_errorbar(aes(ymin = (mean_wt - sd_wt) / species_mean_weight,
-                    ymax = (mean_wt + sd_wt) / species_mean_weight),
-                width=0.2) +
-  labs(title='Full interaction plot all treatment categories') +
-  theme_bw() +
-  theme(
-    axis.text.x=element_text(angle=90, face='bold', size=8),
-    axis.title.x = element_blank(),
-    legend.position = c(0.95, 0.95),
-    legend.title = element_blank(),
-    legend.text = element_text(siz=6, face='bold')
-  )
 
-(inter_plot)
-
-```
-```{r}
-inter_lighting_plot <- ggplot(data=inter, mapping=aes(x=substrate_tank, y=mean_wt_normalized, color=species)) +
-  facet_wrap(~lighting) +
+inter_plot2 <- ggplot(data=inter2, mapping=aes(x=all_conditions, y=mean_wt_normalized, color=species)) +
+  facet_wrap(~tank) +
   geom_point(size=2) +
   geom_line(linewidth=1) +
   geom_errorbar(aes(ymin = (mean_wt - sd_wt) / species_mean_weight,
                     ymax = (mean_wt + sd_wt) / species_mean_weight),
                 width=0.2) +
-  labs(title='Full interaction plots faceted by lighting') +
+  #labs(title='Full interaction plots faceted by lighting') +
+  ylab('Mean weight (normalized)') +
   theme_bw() +
   theme(
-    axis.text.x=element_text(angle=90, face='bold', size=8),
+    axis.text.x=element_text(angle=45, face='bold', size=8, hjust=1),
     axis.title.x = element_blank(),
-    legend.position = c(0.95, 0.95),
     legend.title = element_blank(),
     legend.text = element_text(siz=6, face='bold')
   )
 
-(inter_lighting_plot)
+(inter_plot2)
 ```
+
+
+
 
